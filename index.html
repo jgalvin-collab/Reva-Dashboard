@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident Dashboard</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Theme colors -->
+    <meta name="theme-color" content="#ff4444">
+    <meta name="msapplication-TileColor" content="#1a1a1a">
+    
+    <!-- iOS specific -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Incidents">
+    <link rel="apple-touch-icon" href="/icon-152.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/icon-72.png">
+    <link rel="apple-touch-icon" sizes="96x96" href="/icon-96.png">
+    <link rel="apple-touch-icon" sizes="128x128" href="/icon-128.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/icon-144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" sizes="384x384" href="/icon-384.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icon-72.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/icon-72.png">
+    
+    <!-- Prevent zooming on iOS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            color: white;
+            min-height: 100vh;
+            padding: 10px;
+            overscroll-behavior: none;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            height: calc(100vh - 20px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pwa-status {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 0.8em;
+            color: #ccc;
+            display: none;
+        }
+
+        .pwa-status.show {
+            display: block;
+        }
+
+        .pwa-status.success {
+            background: #4CAF50;
+            border-color: #45a049;
+            color: white;
+        }
+
+        .pwa-status.error {
+            background: #f44336;
+            border-color: #d32f2f;
+            color: white;
+        }
+
+        .pwa-status.warning {
+            background: #FF8C00;
+            border-color: #e67e22;
+            color: white;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 80px);
+            overflow: hidden;
+        }
+
+        .incidents-section {
+            background: #1a1a1a;
+            border-radius: 8px;
+            overflow-y: auto;
+        }
+
+        .schedule-section {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .schedule-header {
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .incident-card.priority {
+            border: 2px solid #ff4444;
+            background: rgba(255, 68, 68, 0.15);
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.3);
+            animation: priorityPulse 2s infinite;
+        }
+
+        @keyframes priorityPulse {
+            0% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(255, 68, 68, 0.6); }
+            100% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.3); }
+        }
+
+        .priority-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff4444;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .incidents-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .incident-card {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: border-color 0.3s ease, background-color 0.3s ease;
+            position: relative;
+            user-select: none;
+        }
+
+        .incident-card:hover {
+            border-color: #666;
+            background: #2e2e2e;
+        }
+
+        .incident-card:active {
+            background: #333;
+        }
+
+        .incident-title {
+            color: white;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+
+        .incident-location {
+            color: #ccc;
+            font-size: 0.9em;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .incident-time {
+            color: #aaa;
+            font-size: 0.8em;
+        }
+
+        .directions-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: normal;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .directions-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .directions-btn:active {
+            transform: translateY(0px);
+        }
+
+        .incident-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .double-click-hint {
+            color: #666;
+            font-size: 0.7em;
+            font-style: italic;
+        }
+
+        .units-label {
+            color: white;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .status-group {
+            margin-bottom: 6px;
+        }
+
+        .status-title {
+            color: white;
+            font-size: 0.75em;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .status-units {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .unit-badge {
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 0.75em;
+            font-weight: bold;
+            text-align: center;
+            min-width: 45px;
+        }
+
+        .unit-dispatched {
+            background-color: #FF8C00;
+            color: white;
+        }
+
+        .unit-enroute {
+            background-color: #32CD32;
+            color: white;
+        }
+
+        .unit-onscene {
+            background-color: #DC143C;
+            color: white;
+        }
+
+        .unit-transport {
+            background-color: #FFD700;
+            color: #333;
+        }
+
+        .unit-transport-arrived {
+            background-color: #1E90FF;
+            color: white;
+        }
+
+        .unit-clear {
+            background-color: #808080;
+            color: white;
+        }
+
+        .incident-status-info {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #444;
+        }
+
+        .status-line {
+            color: #ccc;
+            font-size: 0.8em;
+            margin-bottom: 3px;
+        }
+
+        .fullscreen-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #1a1a1a;
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .fullscreen-content {
+            width: 100%;
+            height: calc(100vh - 40px);
+            position: relative;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #f44336;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 1001;
+        }
+
+        .close-btn:hover {
+            background: #d32f2f;
+        }
+
+        .fullscreen-layout {
+            display: grid;
+            grid-template-columns: 1fr 500px;
+            gap: 20px;
+            height: 100%;
+        }
+
+        .fullscreen-main {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .fullscreen-incident-title {
+            color: white;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .fullscreen-incident-info {
+            margin-bottom: 20px;
+        }
+
+        .fullscreen-incident-number {
+            color: #ccc;
+            font-size: 1em;
+            margin-bottom: 8px;
+        }
+
+        .fullscreen-incident-location {
+            color: #ccc;
+            font-size: 1em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .fullscreen-incident-cross-streets {
+            color: #aaa;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+            font-style: italic;
+        }
+
+        .fullscreen-directions-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: normal;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .fullscreen-directions-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .fullscreen-notes {
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .call-notes-header {
+            color: white;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+
+        .fullscreen-notes-content {
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+            color: #ddd;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            background: #222;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.3em;
+            color: #ccc;
+        }
+
+        .error {
+            background: #f44336;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .no-incidents {
+            text-align: center;
+            padding: 80px 20px;
+            font-size: 1.5em;
+            color: #666;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+
+        .schedule-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .schedule-card {
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .assignment-main {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .assignment-title {
+            color: white;
+            font-size: 0.95em;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .assignment-info {
+            color: #ccc;
+            font-size: 0.8em;
+            margin-bottom: 8px;
+        }
+
+        .staffed-positions {
+            margin-top: 8px;
+        }
+
+        .position-badges {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .position-badge {
+            background: #4CAF50;
+            color: white;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .badge-name {
+            font-weight: bold;
+        }
+
+        .badge-time {
+            font-size: 0.7em;
+            opacity: 0.9;
+            font-weight: normal;
+        }
+
+        .offline-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #f44336;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            z-index: 2000;
+            display: none;
+        }
+
+        .offline-indicator.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                grid-template-rows: 2fr 1fr;
+            }
+            
+            .fullscreen-layout {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .incident-location {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+
+            .fullscreen-incident-location {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="pwaStatus" class="pwa-status"></div>
+        <div id="audioStatus" style="text-align: center; padding: 10px; color: #ff4444; font-size: 0.9em;"></div>
+
+        <div class="main-content">
+            <div class="incidents-section">
+                <div id="incidentsContent">
+                    <div class="loading">
+                        <div>Loading incidents...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="schedule-section">
+                <div class="schedule-header">On Duty Schedule</div>
+                <div id="scheduleContent">
+                    <div class="loading" style="padding: 20px; font-size: 0.9em;">
+                        <div>Loading schedule...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="fullscreenModal" class="fullscreen-modal">
+        <div class="fullscreen-content">
+            <button class="close-btn" onclick="closeFullscreen()">×</button>
+            <div id="fullscreenIncidentContent"></div>
+        </div>
+    </div>
+
+    <div id="offlineIndicator" class="offline-indicator">
+        Connection lost - Working offline
+    </div>
+
+    <script>
+        let pwaInstallPrompt = null;
+        let isOnline = navigator.onLine;
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('Service Worker registered successfully:', registration);
+                    showPWAStatus('Service Worker active - App ready for offline use', 'success');
+                    
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showPWAStatus('App updated! Refresh to use the latest version.', 'warning');
+                            }
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error('Service Worker registration failed:', error);
+                    showPWAStatus('Offline features unavailable', 'error');
+                });
+        } else {
+            console.log('Service Worker not supported');
+            showPWAStatus('Offline features not supported in this browser', 'warning');
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            pwaInstallPrompt = e;
+            
+            setTimeout(() => {
+                showPWAStatus('Tap "Add to Home Screen" in your browser menu to install this app', 'success');
+            }, 5000);
+        });
+
+        window.addEventListener('appinstalled', (e) => {
+            console.log('PWA was installed');
+            showPWAStatus('App installed successfully!', 'success');
+            pwaInstallPrompt = null;
+        });
+
+        function updateOnlineStatus() {
+            const offlineIndicator = document.getElementById('offlineIndicator');
+            
+            if (navigator.onLine) {
+                if (!isOnline) {
+                    console.log('Connection restored');
+                    showPWAStatus('Connection restored', 'success');
+                    offlineIndicator.classList.remove('show');
+                }
+                isOnline = true;
+            } else {
+                if (isOnline) {
+                    console.log('Connection lost');
+                    showPWAStatus('Working offline - Some features may be limited', 'warning');
+                    offlineIndicator.classList.add('show');
+                }
+                isOnline = false;
+            }
+        }
+
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+
+        function showPWAStatus(message, type = 'info') {
+            const statusEl = document.getElementById('pwaStatus');
+            statusEl.textContent = message;
+            statusEl.className = `pwa-status show ${type}`;
+            
+            setTimeout(() => {
+                statusEl.classList.remove('show');
+            }, 5000);
+        }
+
+        function installPWA() {
+            if (pwaInstallPrompt) {
+                pwaInstallPrompt.prompt();
+                pwaInstallPrompt.userChoice.then((result) => {
+                    if (result.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    } else {
+                        console.log('User dismissed the install prompt');
+                    }
+                    pwaInstallPrompt = null;
+                });
+            }
+        }
+
+        function getDirectionsUrl(address) {
+            if (!address || address === 'Unknown Location') {
+                return '#';
+            }
+            
+            // Encode the address for the Google Maps URL
+            const encodedAddress = encodeURIComponent(address);
+            return `https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`;
+        }
+
+        const API_URL = 'https://sizeup.firstduesizeup.com/fd-api/v1/get-units-by-dispatches';
+        const DISPATCHES_API_URL = 'https://sizeup.firstduesizeup.com/fd-api/v1/dispatches';
+        const SCHEDULE_API_URL = 'https://sizeup.firstduesizeup.com/fd-api/v1/schedule';
+        const API_TOKEN = 'E1XwVNMqJGDQaXytesuWoJ03lISrPQnT';
+        const CORS_PROXY = 'https://corsproxy.io/?';
+        const PROXIED_URL = CORS_PROXY + encodeURIComponent(API_URL);
+        const PROXIED_DISPATCHES_URL = CORS_PROXY + encodeURIComponent(DISPATCHES_API_URL);
+        const PROXIED_SCHEDULE_URL = CORS_PROXY + encodeURIComponent(SCHEDULE_API_URL);
+        
+        let incidents = [];
+        let dispatches = [];
+        let scheduleData = [];
+        let alertedIncidents = new Set();
+        let audioEnabled = false;
+        let audioContext = null;
+        let speechSynthesis = window.speechSynthesis;
+        let voiceEnabled = true;
+
+        const PRIORITY_UNITS = ['W16', 'RE16', 'K16', 'A16', 'M16', 'ST16', 'UT16', 'RP16', 'MCU16', 'B16', 'ES16', 'FS16', 'TEST16'];
+
+        function initAudio() {
+            if (audioContext) return;
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioEnabled = true;
+                console.log('Audio context initialized successfully');
+            } catch (error) {
+                console.error('Failed to initialize audio:', error);
+                document.getElementById('audioStatus').textContent = '🔇 Audio not supported in this browser';
+            }
+        }
+
+        const UNIT_PRONUNCIATIONS = {
+            'A16': 'Ambulance',
+            'M16': 'Medic',
+            'ST16': 'Shock Trauma',
+            'W16': 'Wagon',
+            'RE16': 'Rescue Engine',
+            'K16': 'Tanker',
+            'UT16': 'Utility',
+            'RP16': 'Response',
+            'FS16': 'Engine Company',
+            'ES16': 'Ambulance Company',
+            'TEST16': 'Ambulance Company',
+            'B16': 'Brush'
+        };
+
+        function announceIncident(incident) {
+            if (!voiceEnabled || !speechSynthesis) return;
+
+            try {
+                speechSynthesis.cancel();
+                
+                const incidentType = incident.type || 'Unknown incident';
+                const units = incident.unit_codes || [];
+                const priorityUnits = units.filter(unit => PRIORITY_UNITS.includes(unit));
+                
+                let announcementText = '';
+                
+                if (priorityUnits.length > 0) {
+                    const unitPronunciations = priorityUnits.map(unit => 
+                        UNIT_PRONUNCIATIONS[unit] || unit
+                    );
+                    announcementText = `${unitPronunciations.join(', ')}..respond... ${incidentType}... ${incident.address}.`;
+                } else {
+                    announcementText = `${incidentType}.`;
+                }
+                
+                const utterance = new SpeechSynthesisUtterance(announcementText);
+                utterance.rate = 1;
+                utterance.pitch = 0.95;
+                utterance.volume = 0.9;
+                
+                const voices = speechSynthesis.getVoices();
+                const voicePreferences = [
+                    voice => voice.name.toLowerCase().includes('google') && voice.name.toLowerCase().includes('us'),
+                    voice => voice.name.toLowerCase().includes('google'),
+                    voice => voice.name.toLowerCase().includes('microsoft') && voice.name.toLowerCase().includes('david'),
+                    voice => voice.name.toLowerCase().includes('microsoft') && voice.name.toLowerCase().includes('mark'),
+                    voice => voice.name.toLowerCase().includes('microsoft'),
+                    voice => voice.name.toLowerCase().includes('alex'),
+                    voice => voice.name.toLowerCase().includes('daniel'),
+                    voice => voice.name.toLowerCase().includes('samantha'),
+                    voice => voice.name.toLowerCase().includes('male') && voice.lang.startsWith('en'),
+                    voice => voice.name.toLowerCase().includes('david'),
+                    voice => voice.name.toLowerCase().includes('mark'),
+                    voice => voice.lang === 'en-US',
+                    voice => voice.lang.startsWith('en-US'),
+                    voice => voice.lang.startsWith('en')
+                ];
+                
+                let selectedVoice = null;
+                for (const preference of voicePreferences) {
+                    selectedVoice = voices.find(preference);
+                    if (selectedVoice) break;
+                }
+                
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+                
+                speechSynthesis.speak(utterance);
+                
+            } catch (error) {
+                console.error('Error with voice announcement:', error);
+            }
+        }
+
+        function playMinitorAlert() {
+            if (!audioEnabled) return;
+
+            try {
+                const audio = new Audio('minitor_alert.mp3');
+                audio.volume = 0.7;
+                audio.play().catch(error => {
+                    playGeneratedAlert();
+                });
+            } catch (error) {
+                playGeneratedAlert();
+            }
+        }
+
+        function playGeneratedAlert() {
+            if (!audioContext || !audioEnabled) return;
+
+            try {
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+
+                const duration = 0.75;
+                const highTone = 1050;
+                const lowTone = 840;
+                const volume = 0.3;
+                
+                const oscillator1 = audioContext.createOscillator();
+                const gainNode1 = audioContext.createGain();
+                
+                oscillator1.connect(gainNode1);
+                gainNode1.connect(audioContext.destination);
+                
+                oscillator1.frequency.setValueAtTime(highTone, audioContext.currentTime);
+                oscillator1.type = 'square';
+                
+                gainNode1.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode1.gain.linearRampToValueAtTime(volume, audioContext.currentTime + 0.05);
+                gainNode1.gain.setValueAtTime(volume, audioContext.currentTime + duration);
+                gainNode1.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration + 0.05);
+                
+                oscillator1.start(audioContext.currentTime);
+                oscillator1.stop(audioContext.currentTime + duration);
+                
+                const oscillator2 = audioContext.createOscillator();
+                const gainNode2 = audioContext.createGain();
+                
+                oscillator2.connect(gainNode2);
+                gainNode2.connect(audioContext.destination);
+                
+                oscillator2.frequency.setValueAtTime(lowTone, audioContext.currentTime + duration);
+                oscillator2.type = 'square';
+                
+                gainNode2.gain.setValueAtTime(0, audioContext.currentTime + duration);
+                gainNode2.gain.linearRampToValueAtTime(volume, audioContext.currentTime + duration + 0.05);
+                gainNode2.gain.setValueAtTime(volume, audioContext.currentTime + duration * 2);
+                gainNode2.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration * 2 + 0.05);
+                
+                oscillator2.start(audioContext.currentTime + duration);
+                oscillator2.stop(audioContext.currentTime + duration * 2);
+                
+            } catch (error) {
+                console.error('Error playing generated alert sound:', error);
+            }
+        }
+
+        function checkForPriorityIncidents(newIncidents) {
+            const openIncidents = newIncidents.filter(incident => incident.status_code !== 'closed');
+            
+            openIncidents.forEach(incident => {
+                const units = incident.unit_codes || [];
+                const hasPriorityUnits = units.some(unit => PRIORITY_UNITS.includes(unit));
+                
+                if (hasPriorityUnits && !alertedIncidents.has(incident.id)) {
+                    playMinitorAlert();
+                    
+                    setTimeout(() => {
+                        announceIncident(incident);
+                    }, 3000);
+                    
+                    alertedIncidents.add(incident.id);
+                    document.getElementById('audioStatus').textContent = `🚨 ALERT: ${incident.type || 'Unknown incident'} - ${units.filter(u => PRIORITY_UNITS.includes(u)).join(', ')}`;
+                }
+            });
+
+            const openIncidentIds = new Set(openIncidents.map(i => i.id));
+            alertedIncidents.forEach(id => {
+                if (!openIncidentIds.has(id)) {
+                    alertedIncidents.delete(id);
+                }
+            });
+        }
+
+        function parseUnitStatus(callNotes, unitCode) {
+            if (!callNotes) return { status: 'Dispatched', timestamp: null };
+            
+            const lines = callNotes.split('\n');
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                const unitMentioned = (
+                    line.includes(`${unitCode},`) ||
+                    line.includes(`${unitCode} `) ||
+                    line.includes(`${unitCode}:`) ||
+                    line.toUpperCase().includes(`${unitCode.toUpperCase()},`) ||
+                    line.toUpperCase().includes(`${unitCode.toUpperCase()} `)
+                );
+                
+                if (unitMentioned) {
+                    const upperLine = line.toUpperCase();
+                    const timestampMatch = line.match(/^(\d{2}:\d{2}:\d{2}):/);
+                    const timestamp = timestampMatch ? timestampMatch[1] : null;
+                    
+                    let status = 'Dispatched';
+                    
+                    if (upperLine.includes('COMPLETE') || upperLine.includes('AVAILABLE')) {
+                        status = 'Clear';
+                    } else if (upperLine.includes('TRANSPORTING INDIVIDUAL')) {
+                        status = 'Transport';
+                    } else if (upperLine.includes('TRANSPORTING')) {
+                        status = 'Transport';
+                    } else if (upperLine.includes('ARRIVED AT')) {
+                        if (upperLine.includes('HOSPITAL') || upperLine.includes('LZ')) {
+                            status = 'Transport Arrived';
+                        } else {
+                            status = 'On Scene';
+                        }
+                    } else if (upperLine.includes('UNIT ON LOCATION')) {
+                        status = 'On Scene';
+                    } else if (upperLine.includes('ON SCENE')) {
+                        status = 'On Scene';
+                    } else if (upperLine.includes('UNIT DISPATCHED & ARRIVED ON SCENE')) {
+                        status = 'On Scene';
+                    } else if (upperLine.includes('ENROUTE')) {
+                        status = 'Enroute';
+                    } else if (upperLine.includes('UNIT DISPATCHED') || upperLine.includes('DISPATCHED')) {
+                        status = 'Dispatched';
+                    } else {
+                        continue;
+                    }
+                    
+                    return { status, timestamp };
+                }
+            }
+            
+            return { status: 'Dispatched', timestamp: null };
+        }
+
+        function getUnitStatusClass(status) {
+            const statusLower = status.toLowerCase();
+            
+            if (statusLower.includes('clear')) {
+                return 'unit-clear';
+            } else if (statusLower.includes('transport arrived')) {
+                return 'unit-transport-arrived';
+            } else if (statusLower.includes('transport')) {
+                return 'unit-transport';
+            } else if (statusLower.includes('on scene')) {
+                return 'unit-onscene';
+            } else if (statusLower.includes('enroute')) {
+                return 'unit-enroute';
+            } else {
+                return 'unit-dispatched';
+            }
+        }
+
+        function formatTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+
+        function formatScheduleTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        let currentOpenIncidentId = null;
+        let manualStatusOverrides = new Map();
+
+        function setManualUnitStatus(incidentId, unitCode, newStatus) {
+            const key = `${incidentId}-${unitCode}`;
+            manualStatusOverrides.set(key, {
+                status: newStatus,
+                timestamp: Date.now()
+            });
+            
+            if (currentOpenIncidentId === incidentId) {
+                const incident = incidents.find(i => i.id === incidentId);
+                if (incident) {
+                    renderFullscreenIncident(incident);
+                }
+            }
+            
+            renderIncidents();
+        }
+
+        function parseUnitStatusWithOverride(incidentId, callNotes, unitCode) {
+            const key = `${incidentId}-${unitCode}`;
+            const manualOverride = manualStatusOverrides.get(key);
+            const cadParsed = parseUnitStatus(callNotes, unitCode);
+            
+            if (manualOverride) {
+                const callNotesLines = (callNotes || '').split('\n');
+                let latestCadTimestamp = 0;
+                
+                for (const line of callNotesLines) {
+                    const unitMentioned = (
+                        line.includes(`${unitCode},`) ||
+                        line.includes(`${unitCode} `) ||
+                        line.includes(`${unitCode}:`) ||
+                        line.toUpperCase().includes(`${unitCode.toUpperCase()},`) ||
+                        line.toUpperCase().includes(`${unitCode.toUpperCase()} `)
+                    );
+                    
+                    if (unitMentioned) {
+                        const timestampMatch = line.match(/^(\d{2}:\d{2}:\d{2}):/);
+                        if (timestampMatch) {
+                            const timeStr = timestampMatch[1];
+                            const today = new Date();
+                            const [hours, minutes, seconds] = timeStr.split(':');
+                            const cadTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 
+                                                   parseInt(hours), parseInt(minutes), parseInt(seconds));
+                            latestCadTimestamp = Math.max(latestCadTimestamp, cadTime.getTime());
+                        }
+                    }
+                }
+                
+                if (latestCadTimestamp > manualOverride.timestamp) {
+                    manualStatusOverrides.delete(key);
+                    return cadParsed;
+                }
+                
+                return { status: manualOverride.status, timestamp: null };
+            }
+            
+            return cadParsed;
+        }
+
+        function openFullscreen(incidentData) {
+            const incident = typeof incidentData === 'string' ? JSON.parse(incidentData.replace(/&quot;/g, '"')) : incidentData;
+            const modal = document.getElementById('fullscreenModal');
+            currentOpenIncidentId = incident.id;
+            
+            renderFullscreenIncident(incident);
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function renderFullscreenIncident(incident) {
+            const content = document.getElementById('fullscreenIncidentContent');
+            const units = incident.unit_codes || [];
+            
+            let unitsHtml = '';
+            if (units.length > 0) {
+                const unitsByStatus = {};
+                
+                units.forEach(unitCode => {
+                    const result = parseUnitStatusWithOverride(incident.id, incident.call_notes, unitCode);
+                    const status = result.status;
+                    const statusClass = getUnitStatusClass(status);
+                    
+                    if (!unitsByStatus[status]) {
+                        unitsByStatus[status] = [];
+                    }
+                    
+                    unitsByStatus[status].push({
+                        code: unitCode,
+                        statusClass: statusClass
+                    });
+                });
+                
+                unitsHtml = '<div class="units-label">Units:</div>';
+                
+                const statusOrder = ['Dispatched', 'Enroute', 'On Scene', 'Transport', 'Transport Arrived', 'Clear'];
+                
+                statusOrder.forEach(status => {
+                    if (unitsByStatus[status]) {
+                        const statusUnits = unitsByStatus[status];
+                        unitsHtml += `
+                            <div class="status-group">
+                                <div class="status-title">${status}</div>
+                                <div class="status-units">
+                        `;
+                        
+                        statusUnits.forEach(unit => {
+                            const key = `${incident.id}-${unit.code}`;
+                            const hasOverride = manualStatusOverrides.has(key);
+                            const overrideIndicator = hasOverride ? ' title="Manual Override (CAD will override when updated)" style="border: 2px solid #yellow;"' : '';
+                            
+                            unitsHtml += `<div class="unit-badge ${unit.statusClass}" 
+                                onclick="showStatusMenu('${incident.id}', '${unit.code}', event)"${overrideIndicator}>${unit.code}</div>`;
+                        });
+                        
+                        unitsHtml += `
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+            
+            const directionsUrl = getDirectionsUrl(incident.address);
+            
+            content.innerHTML = `
+                <div class="fullscreen-layout">
+                    <div class="fullscreen-main">
+                        <div class="fullscreen-incident-title">${incident.type || 'UNKNOWN'}</div>
+                        <div class="fullscreen-incident-info">
+                            <div class="fullscreen-incident-number">Incident #: ${incident.xref_id || 'Unknown'}</div>
+                            <div class="fullscreen-incident-location">
+                                <span>Location: ${incident.address || 'Unknown Location'}</span>
+                                ${directionsUrl !== '#' ? `<a href="${directionsUrl}" target="_blank" class="fullscreen-directions-btn" onclick="event.stopPropagation()">Directions</a>` : ''}
+                            </div>
+                            ${incident.cross_streets ? `<div class="fullscreen-incident-cross-streets">Cross Streets: ${incident.cross_streets}</div>` : ''}
+                        </div>
+                        ${unitsHtml}
+                        <div class="incident-status-info">
+                            <div class="status-line">Status: ${incident.status_code || 'unknown'}</div>
+                            <div class="status-line">Received: ${formatTime(incident.created_at)}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="fullscreen-notes">
+                        <div class="call-notes-header">Incident Notes:</div>
+                        <div class="fullscreen-notes-content">${incident.call_notes || 'No call log available for this incident.'}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showStatusMenu(incidentId, unitCode, event) {
+            event.stopPropagation();
+            
+            const existingMenu = document.getElementById('statusMenu');
+            if (existingMenu) {
+                existingMenu.remove();
+            }
+            
+            const menu = document.createElement('div');
+            menu.id = 'statusMenu';
+            menu.style.cssText = `
+                position: fixed;
+                background: #333;
+                border: 2px solid #555;
+                border-radius: 8px;
+                padding: 8px;
+                z-index: 10000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+                left: ${event.pageX}px;
+                top: ${event.pageY}px;
+            `;
+            
+            const statusOptions = [
+                {name: 'Dispatched', class: 'unit-dispatched'},
+                {name: 'Enroute', class: 'unit-enroute'}, 
+                {name: 'On Scene', class: 'unit-onscene'},
+                {name: 'Transport', class: 'unit-transport'},
+                {name: 'Transport Arrived', class: 'unit-transport-arrived'},
+                {name: 'Clear', class: 'unit-clear'}
+            ];
+            
+            statusOptions.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option.name;
+                button.className = `unit-badge ${option.class}`;
+                button.style.cssText = `
+                    display: block;
+                    width: 120px;
+                    margin: 2px 0;
+                    cursor: pointer;
+                    border: none;
+                    font-size: 0.8em;
+                `;
+                
+                button.onclick = () => {
+                    setManualUnitStatus(incidentId, unitCode, option.name);
+                    menu.remove();
+                };
+                
+                menu.appendChild(button);
+            });
+            
+            const cancelButton = document.createElement('button');
+            cancelButton.textContent = 'Cancel';
+            cancelButton.style.cssText = `
+                display: block;
+                width: 120px;
+                margin: 4px 0 0 0;
+                cursor: pointer;
+                border: 1px solid #666;
+                background: #444;
+                color: white;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 0.8em;
+            `;
+            cancelButton.onclick = () => menu.remove();
+            menu.appendChild(cancelButton);
+            
+            document.body.appendChild(menu);
+            
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu(e) {
+                    if (!menu.contains(e.target)) {
+                        menu.remove();
+                        document.removeEventListener('click', closeMenu);
+                    }
+                });
+            }, 10);
+        }
+
+        function closeFullscreen() {
+            const modal = document.getElementById('fullscreenModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            currentOpenIncidentId = null;
+        }
+
+        function renderSchedule() {
+            const content = document.getElementById('scheduleContent');
+            
+            if (scheduleData.length === 0) {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 20px; color: #666; font-size: 0.9em;">
+                        <div>No schedule data available</div>
+                    </div>
+                `;
+                return;
+            }
+
+            const currentTime = new Date();
+            let html = '<div class="schedule-container">';
+            let hasCurrentStaff = false;
+            
+            scheduleData.forEach(day => {
+                day.assignments.forEach(assignment => {
+                    const staffedPositions = assignment.positions.filter(pos => 
+                        !pos.is_vacant && pos.work_shifts && pos.work_shifts.length > 0
+                    );
+                    
+                    const currentlyOnDuty = staffedPositions.filter(position => {
+                        const shift = position.work_shifts[0];
+                        if (!shift.start_at_local || !shift.end_at_local) return false;
+                        
+                        const shiftStart = new Date(shift.start_at_local);
+                        const shiftEnd = new Date(shift.end_at_local);
+                        
+                        return currentTime >= shiftStart && currentTime <= shiftEnd;
+                    });
+                    
+                    if (currentlyOnDuty.length > 0) {
+                        hasCurrentStaff = true;
+                        html += `
+                            <div class="schedule-card">
+                                <div class="assignment-main">
+                                    <div class="assignment-title">${assignment.name}</div>
+                                    <div class="staffed-positions">
+                                        <div class="position-badges">
+                        `;
+                        
+                        currentlyOnDuty.forEach(position => {
+                            const qualifierName = position.qualifier ? position.qualifier.shortcode : `Position ${position.pos}`;
+                            const userName = position.work_shifts[0]?.user?.public_name || 'Unknown';
+                            const workType = position.work_shifts[0]?.work_type?.shortcode || '';
+                            const shiftStart = position.work_shifts[0]?.start_at_local;
+                            const shiftEnd = position.work_shifts[0]?.end_at_local;
+                            const timeRange = shiftStart && shiftEnd ? `${formatScheduleTime(shiftStart)} - ${formatScheduleTime(shiftEnd)}` : '';
+                            
+                            html += `
+                                <div class="position-badge">
+                                    <div class="badge-name">${qualifierName || workType}: ${userName}</div>
+                                    ${timeRange ? `<div class="badge-time">${timeRange}</div>` : ''}
+                                </div>
+                            `;
+                        });
+                        
+                        html += `
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+            });
+            
+            if (!hasCurrentStaff) {
+                html = `
+                    <div style="text-align: center; padding: 20px; color: #666; font-size: 0.9em;">
+                        <div>No staff currently on duty</div>
+                        <p style="font-size: 0.8em; margin-top: 10px;">Check back during scheduled hours</p>
+                    </div>
+                `;
+            } else {
+                html += '</div>';
+            }
+            
+            content.innerHTML = html;
+        }
+
+        function renderIncidents() {
+            const content = document.getElementById('incidentsContent');
+            const openIncidents = incidents.filter(incident => incident.status_code !== 'closed');
+            
+            if (openIncidents.length === 0) {
+                content.innerHTML = `
+                    <div class="no-incidents">
+                        <div>No open incidents</div>
+                        <p style="font-size: 0.9em; margin-top: 15px;">All quiet at the station</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const priorityIncidents = [];
+            const regularIncidents = [];
+
+            openIncidents.forEach(incident => {
+                const units = incident.unit_codes || [];
+                const hasPriorityUnits = units.some(unit => PRIORITY_UNITS.includes(unit));
+                
+                if (hasPriorityUnits) {
+                    priorityIncidents.push(incident);
+                } else {
+                    regularIncidents.push(incident);
+                }
+            });
+
+            const sortedIncidents = [...priorityIncidents, ...regularIncidents];
+
+            let html = '<div class="incidents-container">';
+            
+            sortedIncidents.forEach((incident, index) => {
+                const units = incident.unit_codes || [];
+                const hasPriorityUnits = units.some(unit => PRIORITY_UNITS.includes(unit));
+                const receivedTime = new Date(incident.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+                let compactUnitsHtml = '';
+                if (units.length > 0) {
+                    const unitsByStatus = {};
+                    const statusOrder = ['Dispatched', 'Enroute', 'On Scene', 'Transport', 'Transport Arrived', 'Clear'];
+                    
+                    units.forEach(unitCode => {
+                        const result = parseUnitStatusWithOverride(incident.id, incident.call_notes, unitCode);
+                        const status = result.status;
+                        
+                        if (!unitsByStatus[status]) {
+                            unitsByStatus[status] = [];
+                        }
+                        unitsByStatus[status].push(unitCode);
+                    });
+                    
+                    Object.keys(unitsByStatus).forEach(status => {
+                        unitsByStatus[status].sort();
+                    });
+                    
+                    compactUnitsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px;">';
+                    
+                    statusOrder.forEach(status => {
+                        if (unitsByStatus[status]) {
+                            unitsByStatus[status].forEach(unitCode => {
+                                const statusClass = getUnitStatusClass(status);
+                                compactUnitsHtml += `<div class="unit-badge ${statusClass}">${unitCode}</div>`;
+                            });
+                        }
+                    });
+                    
+                    compactUnitsHtml += '</div>';
+                }
+
+                const directionsUrl = getDirectionsUrl(incident.address);
+
+                html += `
+                    <div class="incident-card${hasPriorityUnits ? ' priority' : ''}" ondblclick="openFullscreen(${JSON.stringify(incident).replace(/"/g, '&quot;')})">
+                        ${hasPriorityUnits ? '<div class="priority-indicator">Priority</div>' : ''}
+                        <div class="incident-title">${incident.type || 'UNKNOWN'}</div>
+                        <div class="incident-location">
+                            <span>${incident.address || 'Unknown Location'}</span>
+                            ${directionsUrl !== '#' ? `<a href="${directionsUrl}" target="_blank" class="directions-btn" onclick="event.stopPropagation()">Directions</a>` : ''}
+                        </div>
+                        <div class="incident-time">Received: ${receivedTime}</div>
+                        ${compactUnitsHtml}
+                        <div class="incident-actions">
+                            <div class="double-click-hint">Double-click for details</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        async function fetchIncidents() {
+            try {
+                const [incidentsResponse, dispatchesResponse] = await Promise.all([
+                    fetch(PROXIED_URL, {
+                        method: 'GET',
+                        headers: {
+                            'accept': 'application/json',
+                            'authorization': `Bearer ${API_TOKEN}`
+                        }
+                    }),
+                    fetch(PROXIED_DISPATCHES_URL, {
+                        method: 'GET',
+                        headers: {
+                            'accept': 'application/json',
+                            'authorization': `Bearer ${API_TOKEN}`
+                        }
+                    })
+                ]);
+
+                if (!incidentsResponse.ok) {
+                    throw new Error(`Incidents API error! status: ${incidentsResponse.status} - ${incidentsResponse.statusText}`);
+                }
+
+                if (!dispatchesResponse.ok) {
+                    throw new Error(`Dispatches API error! status: ${dispatchesResponse.status} - ${dispatchesResponse.statusText}`);
+                }
+
+                incidents = await incidentsResponse.json();
+                dispatches = await dispatchesResponse.json();
+                
+                incidents = incidents.map(incident => {
+                    const matchingDispatch = dispatches.find(dispatch => dispatch.id === incident.id);
+                    return {
+                        ...incident,
+                        xref_id: matchingDispatch ? matchingDispatch.xref_id : null,
+                        cross_streets: matchingDispatch ? matchingDispatch.cross_streets : null
+                    };
+                });
+                
+                checkForPriorityIncidents(incidents);
+                renderIncidents();
+                
+                if (currentOpenIncidentId !== null) {
+                    const updatedIncident = incidents.find(incident => incident.id === currentOpenIncidentId);
+                    if (updatedIncident) {
+                        renderFullscreenIncident(updatedIncident);
+                    } else {
+                        closeFullscreen();
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error fetching incidents:', error);
+                
+                if (!isOnline) {
+                    document.getElementById('incidentsContent').innerHTML = `
+                        <div class="no-incidents">
+                            <div>Working Offline</div>
+                            <p style="font-size: 0.9em; margin-top: 15px;">Waiting for connection to restore...</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('incidentsContent').innerHTML = `
+                        <div class="error">
+                            <h3>API Access Error</h3>
+                            <p><strong>Error:</strong> ${error.message}</p>
+                            <p>Please check your connection and try again.</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        async function fetchSchedule() {
+            try {
+                const response = await fetch(PROXIED_SCHEDULE_URL, {
+                    method: 'GET',
+                    headers: {
+                        'accept': 'application/json',
+                        'authorization': `Bearer ${API_TOKEN}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+                }
+
+                scheduleData = await response.json();
+                renderSchedule();
+
+            } catch (error) {
+                console.error('Error fetching schedule:', error);
+                
+                if (!isOnline) {
+                    document.getElementById('scheduleContent').innerHTML = `
+                        <div style="background: #333; color: white; padding: 15px; border-radius: 6px; text-align: center; font-size: 0.8em;">
+                            <h4>Working Offline</h4>
+                            <p>Schedule will update when connection is restored</p>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('scheduleContent').innerHTML = `
+                        <div style="background: #f44336; color: white; padding: 15px; border-radius: 6px; text-align: center; font-size: 0.8em;">
+                            <h4>Schedule API Error</h4>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        document.getElementById('fullscreenModal').addEventListener('click', function(e) {
+            if (e.target === this) closeFullscreen();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeFullscreen();
+        });
+
+        document.addEventListener('click', initAudio, { once: true });
+        document.addEventListener('keydown', initAudio, { once: true });
+        document.addEventListener('touchstart', initAudio, { once: true });
+        
+        initAudio();
+
+        window.testAlertSystem = function() {
+            console.log('Testing alert system...');
+            initAudio();
+            
+            if (!audioEnabled) {
+                console.log('Audio not enabled');
+                return;
+            }
+            
+            console.log('Audio enabled, playing test alert...');
+            playMinitorAlert();
+            
+            setTimeout(() => {
+                const testIncident = {
+                    type: 'FIRE IN A HOUSE',
+                    unit_codes: ['ES16', 'FS16', 'M16', 'RE16', 'W16', 'K16'],
+                    address: '18230 Birmingham Rd'
+                };
+                console.log('Playing test voice announcement...');
+                announceIncident(testIncident);
+            }, 3000);
+            
+            document.getElementById('audioStatus').textContent = 'TEST ALERT: Manual test triggered';
+        };
+
+        window.debugAlertSystem = function() {
+            console.log('=== ALERT SYSTEM DEBUG ===');
+            console.log('Audio enabled:', audioEnabled);
+            console.log('Audio context:', audioContext);
+            console.log('Voice enabled:', voiceEnabled);
+            console.log('Priority units:', PRIORITY_UNITS);
+            console.log('Alerted incidents:', Array.from(alertedIncidents));
+            console.log('Current incidents:', incidents.length);
+            console.log('Current incidents data:', incidents);
+        };
+
+        updateOnlineStatus();
+        scheduleData = [];
+        fetchIncidents();
+        fetchSchedule();
+        
+        setInterval(() => {
+            fetchIncidents();
+            fetchSchedule();
+        }, 2000);
+    </script>
+</body>
+</html>
